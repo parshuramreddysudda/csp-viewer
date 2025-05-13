@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { FileSpreadsheet, Upload, AlertCircle } from 'lucide-react';
-import { parseExcelFile } from '../utils/excelUtils';
+import { parseFile } from '../utils/excelUtils';
 import { ExcelData } from '../types';
 
 interface FileUploaderProps {
@@ -20,20 +20,20 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
     }
     
     const file = acceptedFiles[0];
+    const fileType = file.name.split('.').pop()?.toLowerCase();
     
-    // Validate file type
-    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-      setError('Please upload an Excel file (.xlsx or .xls)');
+    if (!['xlsx', 'xls', 'csv'].includes(fileType || '')) {
+      setError('Please upload an Excel (.xlsx, .xls) or CSV (.csv) file');
       return;
     }
     
     try {
       setIsLoading(true);
-      const data = await parseExcelFile(file);
+      const data = await parseFile(file);
       onDataLoaded(data);
       setIsLoading(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to parse Excel file');
+      setError(err instanceof Error ? err.message : 'Failed to parse file');
       setIsLoading(false);
     }
   }, [onDataLoaded]);
@@ -42,7 +42,8 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
     onDrop,
     accept: {
       'application/vnd.ms-excel': ['.xls'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'text/csv': ['.csv']
     },
     maxFiles: 1
   });
@@ -65,7 +66,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
         {isLoading ? (
           <div className="flex flex-col items-center">
             <div className="w-10 h-10 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p className="text-gray-600">Processing your Excel file...</p>
+            <p className="text-gray-600">Processing your file...</p>
           </div>
         ) : (
           <>
@@ -81,11 +82,11 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onDataLoaded }) => {
             </div>
             
             <h3 className="text-lg font-semibold mb-2">
-              {isDragActive ? 'Drop your Excel file here' : 'Upload your Excel file'}
+              {isDragActive ? 'Drop your file here' : 'Upload your file'}
             </h3>
             
             <p className="text-gray-500 mb-2">
-              Drag and drop your .xlsx or .xls file, or click to browse
+              Drag and drop your Excel (.xlsx, .xls) or CSV (.csv) file, or click to browse
             </p>
             
             <p className="text-sm text-gray-400">

@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import Papa from 'papaparse';
 import { ColumnDataType, ColumnInfo, ExcelData } from '../types';
 
 export const parseExcelFile = (file: File): Promise<ExcelData> => {
@@ -50,6 +51,68 @@ export const parseExcelFile = (file: File): Promise<ExcelData> => {
     
     reader.readAsBinaryString(file);
   });
+};
+
+export const parseCsvFile = (file: File): Promise<ExcelData> => {
+  return new Promise((resolve, reject) => {
+    Papa.parse(file, {
+      complete: (results) => {
+        try {
+          if (results.data.length === 0) {
+            throw new Error('No data found in CSV file');
+          }
+
+          const headers = results.data[0] as string[];
+          const rows = [];
+
+          for (let i = 1; i < results.data.length; i++) {
+            const row = results.data[i] as any[];
+            const rowData: Record<string, any> = {};
+
+            headers.forEach((header, index) => {
+              // Try to convert numeric strings to numbers
+              const value = row[index];
+              if (typeof value === 'string' && !isNaN(Number(value))) {
+                rowData[header] = Number(value);
+              } else {
+                rowData[header] = value;
+              }
+            });
+
+            rows.push(rowData);
+          }
+
+          resolve({
+            headers,
+            rows,
+            rawData: results.data as any[][]
+          });
+        } catch (error) {
+          reject(error);
+        }
+      },
+      error: (error) => {
+        reject(error);
+      },
+      header: false,
+      skipEmptyLines: true,
+      dynamicTyping: true
+    });
+  });
+};
+
+export const parseFile = async (file: File): Promise<ExcelData> => {
+  const fileType = file.name.split('.').pop()?.toLowerCase();
+  
+  switch (fileType) {
+    case 'xlsx':
+    case 'xls':
+      return parseExcelFile(file);
+    case 'csv':
+      return parseCsvFile(file);
+    default:
+      throw new Error('Unsupported file type. Please upload an Excel (.xlsx, .xls) or CSV (.csv) file.');
+  }
 };
 
 export const determineColumnDataType = (columnData: any[]): ColumnDataType => {
